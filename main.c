@@ -35,22 +35,6 @@ void print_hex_dump(const uint8_t* data, uint32_t size, uint32_t max_bytes) {
     printf("\n");
 }
 
-// Function to parse a varint (variable-length integer)
-int64_t parse_varint(const uint8_t *data, size_t *pos, size_t max_pos, int *bytes_read) {
-    int64_t result = 0;
-    *bytes_read = 0;
-    for (int i = 0; i < 9 && *pos < max_pos; i++) {
-        uint8_t byte = data[*pos];
-        (*pos)++;
-        (*bytes_read)++;
-        result = (result << 7) | (byte & 0x7F);
-        if (byte < 0x80) {
-            break;
-        }
-    }
-    return result;
-}
-
 // Function to print page type based on the first byte of page data
 void print_page_type(uint8_t* page_data, uint32_t page_number) {
     uint8_t page_type = page_data[0];
@@ -79,6 +63,22 @@ void print_page_type(uint8_t* page_data, uint32_t page_number) {
             printf("Unknown (0x%02x)\n", page_type);
             break;
     }
+}
+
+// Function to parse a varint (variable-length integer)
+int64_t parse_varint(const uint8_t *data, size_t *pos, size_t max_pos, int *bytes_read) {
+    int64_t result = 0;
+    *bytes_read = 0;
+    for (int i = 0; i < 9 && *pos < max_pos; i++) {
+        uint8_t byte = data[*pos];
+        (*pos)++;
+        (*bytes_read)++;
+        result = (result << 7) | (byte & 0x7F);
+        if (byte < 0x80) {
+            break;
+        }
+    }
+    return result;
 }
 
 // Function to print B-tree table leaf cell information
