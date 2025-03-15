@@ -69,16 +69,22 @@ void print_page_type(uint8_t* page_data, uint32_t page_number) {
 int64_t parse_varint(const uint8_t *data, size_t *pos, size_t max_pos, int *bytes_read) {
     int64_t result = 0;
     *bytes_read = 0;
+
+    if (*pos >= max_pos) {
+        return -1;  // Error: Starting position beyond bounds
+    }
+
     for (int i = 0; i < 9 && *pos < max_pos; i++) {
         uint8_t byte = data[*pos];
         (*pos)++;
         (*bytes_read)++;
         result = (result << 7) | (byte & 0x7F);
         if (byte < 0x80) {
-            break;
+            return result;
         }
     }
-    return result;
+
+    return -1;  // Error: Varint too long or hit max_pos
 }
 
 // Function to print B-tree table leaf cell information
@@ -91,8 +97,10 @@ void print_table_leaf_cells(uint8_t* page_data, uint32_t page_size, uint16_t cel
     printf("    Cells (%u):\n", cell_count);
 
     // Check if cell pointer array fits within page_size
-    if (8 + cell_count * 2 > page_size) {
-        printf("    Error: Cell pointer array exceeds page size\n");
+    uint32_t pointer_array_size = 8 + cell_count * 2;
+    if (pointer_array_size > page_size) {
+        printf("    Error: Cell pointer array exceeds page size (%u > %u)\n",
+               pointer_array_size, page_size);
         return;
     }
 
@@ -102,9 +110,16 @@ void print_table_leaf_cells(uint8_t* page_data, uint32_t page_size, uint16_t cel
         return;
     }
 
-    // Read cell pointer array (starts at offset 8, big-endian to native)
+    // Read and validate cell pointer array
     for (uint16_t i = 0; i < cell_count; i++) {
-        cell_pointers[i] = __builtin_bswap16(*(uint16_t*)(page_data + 8 + (i * 2)));
+        size_t offset = 8 + (i * 2);
+        cell_pointers[i] = __builtin_bswap16(*(uint16_t*)(page_data + offset));
+        if (cell_pointers[i] >= page_size) {
+            printf("    Error: Invalid cell pointer %u at index %u (exceeds page size %u)\n",
+                   cell_pointers[i], i, page_size);
+            free(cell_pointers);
+            return;
+        }
     }
 
     // Parse and print each cell
@@ -112,15 +127,25 @@ void print_table_leaf_cells(uint8_t* page_data, uint32_t page_size, uint16_t cel
         size_t pos = cell_pointers[i];
         int bytes_read;
 
-        // Parse payload size and RowID varints
-        int64_t payload_size = parse_varint(page_data, &pos, page_size, &bytes_read);
-        pos += bytes_read;  // Advance pos after parsing payload_size
-        int64_t rowid = parse_varint(page_data, &pos, page_size, &bytes_read);
-        pos += bytes_read;  // Advance pos after parsing rowid
+        if (pos >= page_size) {
+            printf("      Cell %u: Error: Offset %u exceeds page size %u\n",
+                   i + 1, cell_pointers[i], page_size);
+            continue;
+        }
 
-        // Check for invalid payload size
+        // Parse payload size
+        int64_t payload_size = parse_varint(page_data, &pos, page_size, &bytes_read);
         if (payload_size < 0) {
-            printf("      Cell %u: Error: Negative payload size (%lld)\n", i + 1, payload_size);
+            printf("      Cell %u: Error: Invalid payload size at offset %u\n",
+                   i + 1, cell_pointers[i]);
+            continue;
+        }
+        
+        // Parse RowID
+        int64_t rowid = parse_varint(page_data, &pos, page_size, &bytes_read);
+        if (rowid < 0) {
+            printf("      Cell %u: Error: Invalid RowID at offset %u\n",
+                   i + 1, cell_pointers[i]);
             continue;
         }
 
@@ -129,14 +154,20 @@ void print_table_leaf_cells(uint8_t* page_data, uint32_t page_size, uint16_t cel
         printf("        Payload Size: %lld bytes\n", payload_size);
         printf("        RowID: %lld\n", rowid);
 
-        // Parse header size (varint after RowID) to find payload start
+        // Parse header size
         int64_t header_size = parse_varint(page_data, &pos, page_size, &bytes_read);
-        pos += bytes_read;  // Advance pos to start of actual payload data
-        size_t payload_start = pos;
+        if (header_size < 0 || pos + header_size > page_size) {
+            printf("        Error: Invalid header size %lld at offset %u\n",
+                   header_size, cell_pointers[i]);
+            continue;
+        }
 
-        // Print first 32 bytes of payload as hex (if available)
-        uint32_t payload_to_print = (payload_size < 32) ? (uint32_t)payload_size : 32;
-        if (payload_start + payload_size <= page_size) {
+        size_t payload_start = pos;
+        size_t payload_end = payload_start + payload_size;
+
+        // Print payload if valid
+        if (payload_end <= page_size) {
+            uint32_t payload_to_print = (payload_size < 32) ? (uint32_t)payload_size : 32;
             printf("        Payload Data (first %u bytes):\n        ", payload_to_print);
             for (uint32_t j = 0; j < payload_to_print; j++) {
                 printf("%02x ", page_data[payload_start + j]);
@@ -144,7 +175,8 @@ void print_table_leaf_cells(uint8_t* page_data, uint32_t page_size, uint16_t cel
             }
             printf("\n");
         } else {
-            printf("        Warning: Payload exceeds page size\n");
+            printf("        Warning: Payload size %lld exceeds page boundary (end: %zu > %u)\n",
+                   payload_size, payload_end, page_size);
         }
     }
 
