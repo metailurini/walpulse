@@ -1,9 +1,11 @@
 #include "page_analyzer.h"
 #include "utils.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void print_page_type(uint8_t* page_data, uint32_t page_number) {
+// Prints the type of a database page based on its first byte
+void print_page_type(uint8_t *page_data, uint32_t page_number) {
     uint8_t page_type = page_data[0];
     printf("  Page Type: ");
     switch (page_type) {
@@ -22,21 +24,18 @@ void print_page_type(uint8_t* page_data, uint32_t page_number) {
     }
 }
 
-void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_size) {
+// Prints the header information of a database page
+void print_page_header(uint8_t *page_data, uint32_t page_number, uint32_t page_size) {
     uint8_t page_type = page_data[0];
-    uint16_t freeblock_offset = to_host16(*(uint16_t*)(page_data + 1));
-    uint16_t cell_count = to_host16(*(uint16_t*)(page_data + 3));
-    uint16_t content_start = to_host16(*(uint16_t*)(page_data + 5));
-    uint8_t fragmented_bytes = page_data[7];
-
-    uint8_t* header_start = page_data;
+    uint8_t *header_start = page_data;
     if (page_number == 1) {
         header_start = page_data + 100;
-        freeblock_offset = to_host16(*(uint16_t*)(header_start + 1));
-        cell_count = to_host16(*(uint16_t*)(header_start + 3));
-        content_start = to_host16(*(uint16_t*)(header_start + 5));
-        fragmented_bytes = header_start[7];
     }
+
+    uint16_t freeblock_offset = to_host16(*(uint16_t *)(header_start + 1));
+    uint16_t cell_count = to_host16(*(uint16_t *)(header_start + 3));
+    uint16_t content_start = to_host16(*(uint16_t *)(header_start + 5));
+    uint8_t fragmented_bytes = header_start[7];
 
     printf("  Page Header:\n");
     printf("    First Freeblock Offset: %u (0 if no freeblocks)\n", freeblock_offset);
@@ -45,11 +44,13 @@ void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_s
            content_start, content_start == 0 ? page_size : content_start);
     printf("    Fragmented Free Bytes: %u\n", fragmented_bytes);
 
+    // Print additional info for interior nodes
     if (page_type == 0x02 || page_type == 0x05) {
-        uint32_t rightmost_child = to_host32(*(uint32_t*)(header_start + 8));
+        uint32_t rightmost_child = to_host32(*(uint32_t *)(header_start + 8));
         printf("    Rightmost Child Page: %u\n", rightmost_child);
     }
 
+    // Process cells for table leaf pages
     if (page_type == 0x0D) {
         if (cell_count == 0) {
             printf("    No cells to display.\n");
@@ -63,7 +64,7 @@ void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_s
             return;
         }
 
-        uint16_t* cell_pointers = malloc(cell_count * sizeof(uint16_t));
+        uint16_t *cell_pointers = malloc(cell_count * sizeof(uint16_t));
         if (!cell_pointers) {
             report_error("Failed to allocate memory for cell pointers", 0);
             return;
@@ -71,7 +72,7 @@ void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_s
 
         for (uint16_t i = 0; i < cell_count; i++) {
             size_t offset = 8 + (i * 2);
-            cell_pointers[i] = to_host16(*(uint16_t*)(page_data + offset));
+            cell_pointers[i] = to_host16(*(uint16_t *)(page_data + offset));
             if (cell_pointers[i] >= page_size) {
                 report_error("Invalid cell pointer exceeds page size", 0);
                 free(cell_pointers);
@@ -81,7 +82,7 @@ void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_s
 
         for (uint16_t i = 0; i < cell_count; i++) {
             CellInfo cell = parse_cell(page_data, cell_pointers[i], page_size);
-            if (cell.payload_size >= 0) {  // Only print valid cells
+            if (cell.payload_size >= 0) {
                 print_cell_info(&cell, page_data, page_size);
             }
             free_cell_info(&cell);
@@ -90,7 +91,8 @@ void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_s
     }
 }
 
-CellInfo parse_cell(uint8_t* page_data, uint32_t offset, uint32_t page_size) {
+// Parses a cell from a table leaf page
+CellInfo parse_cell(uint8_t *page_data, uint32_t offset, uint32_t page_size) {
     CellInfo cell = { .offset = offset, .serial_types = NULL };
     size_t pos = offset;
     int bytes_read;
@@ -150,22 +152,25 @@ CellInfo parse_cell(uint8_t* page_data, uint32_t offset, uint32_t page_size) {
     return cell;
 }
 
-void print_cell_info(CellInfo* cell, uint8_t* page_data, uint32_t page_size) {
+// Prints information about a parsed cell
+void print_cell_info(CellInfo *cell, uint8_t *page_data, uint32_t page_size) {
     printf("      Cell at offset %u:\n", cell->offset);
     printf("        Payload Size: %lld bytes\n", cell->payload_size);
     printf("        RowID: %lld\n", cell->rowid);
     printf("        Number of Columns: %u\n", cell->column_count);
-    // TODO: Existing record information printing code is incorrect, needs update
+    // TODO: Implement detailed column value printing
 }
 
-void free_cell_info(CellInfo* cell) {
+// Frees resources allocated for a CellInfo structure
+void free_cell_info(CellInfo *cell) {
     if (cell->serial_types) {
         free(cell->serial_types);
         cell->serial_types = NULL;
     }
 }
 
-int parse_serial_type(int64_t serial_type, const char** type_name, uint32_t* length) {
+// Determines the type and length of a SQLite serial type
+int parse_serial_type(int64_t serial_type, const char **type_name, uint32_t *length) {
     if (serial_type == 0) { *type_name = "NULL"; *length = 0; return 0; }
     if (serial_type == 1) { *type_name = "INT8"; *length = 1; return 0; }
     if (serial_type == 2) { *type_name = "INT16"; *length = 2; return 0; }
@@ -185,17 +190,22 @@ int parse_serial_type(int64_t serial_type, const char** type_name, uint32_t* len
     return -1;
 }
 
-void print_column_value(const uint8_t* data, size_t pos, size_t max_pos, const char* type_name, uint32_t length) {
-    if (pos + length > max_pos) { report_error("Value exceeds page size", 0); return; }
+// Prints the value of a column based on its serial type
+void print_column_value(const uint8_t *data, size_t pos, size_t max_pos, const char *type_name, uint32_t length) {
+    if (pos + length > max_pos) {
+        report_error("Value exceeds page size", 0);
+        return;
+    }
+
     if (strcmp(type_name, "NULL") == 0) printf("NULL");
     else if (strcmp(type_name, "ZERO") == 0) printf("0");
     else if (strcmp(type_name, "ONE") == 0) printf("1");
     else if (strcmp(type_name, "INT8") == 0) printf("%d", (int8_t)data[pos]);
-    else if (strcmp(type_name, "INT16") == 0) printf("%d", (int16_t)to_host16(*(uint16_t*)(data + pos)));
-    else if (strcmp(type_name, "INT24") == 0) printf("%d", (int32_t)((data[pos] << 16) | (data[pos+1] << 8) | data[pos+2]));
-    else if (strcmp(type_name, "INT32") == 0) printf("%d", (int32_t)to_host32(*(uint32_t*)(data + pos)));
-    else if (strcmp(type_name, "INT64") == 0) printf("%lld", (int64_t)to_host64(*(uint64_t*)(data + pos)));
-    else if (strcmp(type_name, "FLOAT64") == 0) printf("%f", *(double*)(data + pos));
+    else if (strcmp(type_name, "INT16") == 0) printf("%d", (int16_t)to_host16(*(uint16_t *)(data + pos)));
+    else if (strcmp(type_name, "INT24") == 0) printf("%d", (int32_t)((data[pos] << 16) | (data[pos + 1] << 8) | data[pos + 2]));
+    else if (strcmp(type_name, "INT32") == 0) printf("%d", (int32_t)to_host32(*(uint32_t *)(data + pos)));
+    else if (strcmp(type_name, "INT64") == 0) printf("%lld", (int64_t)to_host64(*(uint64_t *)(data + pos)));
+    else if (strcmp(type_name, "FLOAT64") == 0) printf("%f", *(double *)(data + pos));
     else if (strcmp(type_name, "TEXT") == 0) {
         printf("\"");
         for (uint32_t i = 0; i < length; i++) printf("%c", data[pos + i]);
