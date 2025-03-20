@@ -30,7 +30,7 @@ void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_s
     uint8_t fragmented_bytes = page_data[7];
 
     uint8_t* header_start = page_data;
-    if (page_number == 1 && page_type == 0x00) {
+    if (page_number == 1) {
         header_start = page_data + 100;
         freeblock_offset = to_host16(*(uint16_t*)(header_start + 1));
         cell_count = to_host16(*(uint16_t*)(header_start + 3));
