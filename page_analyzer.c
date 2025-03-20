@@ -155,33 +155,7 @@ void print_cell_info(CellInfo* cell, uint8_t* page_data, uint32_t page_size) {
     printf("        Payload Size: %lld bytes\n", cell->payload_size);
     printf("        RowID: %lld\n", cell->rowid);
     printf("        Number of Columns: %u\n", cell->column_count);
-
-    size_t value_pos = cell->offset + (cell->header_size + 3); // Approximate varint sizes
-    size_t payload_end = value_pos + cell->payload_size;
-    if (payload_end > page_size) {
-        printf("        Warning: Payload size exceeds page boundary\n");
-        return;
-    }
-
-    printf("        Column Details:\n");
-    for (uint32_t j = 0; j < cell->column_count; j++) {
-        const char* type_name;
-        uint32_t length;
-        if (parse_serial_type(cell->serial_types[j], &type_name, &length) < 0) {
-            printf("          Column %u: Error: Unknown serial type %lld\n", j + 1, cell->serial_types[j]);
-            continue;
-        }
-        printf("          Column %u: Type: %s, Length: %u bytes, Value: ", j + 1, type_name, length);
-        print_column_value(page_data, value_pos, page_size, type_name, length);
-        printf("\n");
-        value_pos += length;
-    }
-
-    if (value_pos < payload_end) {
-        uint32_t remaining = payload_end - value_pos;
-        printf("        Remaining Payload (%u bytes):\n        ", remaining);
-        print_hex_dump(page_data + value_pos, remaining, 32);
-    }
+    // TODO: Existing record information printing code is incorrect, needs update
 }
 
 void free_cell_info(CellInfo* cell) {
