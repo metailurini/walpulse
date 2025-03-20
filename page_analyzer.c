@@ -214,6 +214,8 @@ int parse_serial_type(int64_t serial_type, const char** type_name, uint32_t* len
 void print_column_value(const uint8_t* data, size_t pos, size_t max_pos, const char* type_name, uint32_t length) {
     if (pos + length > max_pos) { report_error("Value exceeds page size", 0); return; }
     if (strcmp(type_name, "NULL") == 0) printf("NULL");
+    else if (strcmp(type_name, "ZERO") == 0) printf("0");
+    else if (strcmp(type_name, "ONE") == 0) printf("1");
     else if (strcmp(type_name, "INT8") == 0) printf("%d", (int8_t)data[pos]);
     else if (strcmp(type_name, "INT16") == 0) printf("%d", (int16_t)to_host16(*(uint16_t*)(data + pos)));
     else if (strcmp(type_name, "INT24") == 0) printf("%d", (int32_t)((data[pos] << 16) | (data[pos+1] << 8) | data[pos+2]));
