@@ -40,8 +40,37 @@ TEST(test_compute_wal_checksum) {
     ASSERT(checksum2 == 0x0A); // (0+1) + (1+2) + (1+2+3)
 }
 
+TEST(test_report_error) {
+    int result = report_error("Test error", 0);
+    ASSERT(result == 0); // Non-fatal should return 0
+    result = report_error("Fatal test error", 1);
+    ASSERT(result == -1); // Fatal should return 1
+}
+
+TEST(test_to_host16) {
+    uint16_t big_endian = 0x1234;
+    uint16_t expected = 0x3412; // Assuming little-endian host
+    ASSERT(to_host16(big_endian) == expected);
+}
+
+TEST(test_to_host64) {
+    uint64_t big_endian = 0x123456789ABCDEF0;
+    uint64_t expected = 0xF0DEBC9A78563412; // Assuming little-endian host
+    ASSERT(to_host64(big_endian) == expected);
+}
+
+TEST(test_print_hex_dump) {
+    uint8_t data[] = {0x01, 0x02, 0x03, 0x04};
+    print_hex_dump(data, 4, 4);
+    // No direct assertions possible due to output-only function; test for no crash
+}
+
 void register_utils_tests(void) {
     run_test("test_to_host32", test_to_host32);
     run_test("test_parse_varint", test_parse_varint);
     run_test("test_compute_wal_checksum", test_compute_wal_checksum);
+    run_test("test_report_error", test_report_error);
+    run_test("test_to_host16", test_to_host16);
+    run_test("test_to_host64", test_to_host64);
+    run_test("test_print_hex_dump", test_print_hex_dump);
 }

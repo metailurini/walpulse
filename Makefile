@@ -4,7 +4,7 @@ LDFLAGS = -lsqlite3
 
 SRC = main.c utils.c wal_parser.c page_analyzer.c db_utils.c
 OBJ = $(SRC:.c=.o)
-TEST_SRC = tests/main.c tests/test_wal_parser.c tests/test_utils.c tests/test_page_analyzer.c tests/test_harness.c
+TEST_SRC = tests/main.c tests/test_wal_parser.c tests/test_utils.c tests/test_page_analyzer.c tests/test_harness.c tests/test_db_utils.c
 TEST_OBJ = $(TEST_SRC:.c=.o)
 EXEC = walpulse
 TEST_EXEC = run_tests
