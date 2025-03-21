@@ -3,7 +3,6 @@
 #include "page_analyzer.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 // Reads and validates the WAL file header
 WalHeader read_wal_header(FILE *file) {
@@ -40,7 +39,7 @@ int validate_wal_file_size(long file_size, uint32_t page_size) {
     return remaining_size / frame_size;
 }
 
-// Processes and prints information about WAL frames
+// Process and prints information about WAL frames
 void process_wal_frames(FILE *file, WalHeader *header, const char *wal_filename) {
     FrameHeader frame;
     uint32_t frame_count = 0;
@@ -50,16 +49,12 @@ void process_wal_frames(FILE *file, WalHeader *header, const char *wal_filename)
         return;
     }
 
-    // Derive database filename from WAL filename (remove "-wal" suffix)
-    size_t wal_len = strlen(wal_filename);
-    char *db_filename = malloc(wal_len - 3); // "-wal" is 4 chars, including null terminator
+    // Derive database filename from WAL filename using utility function
+    char *db_filename = derive_db_filename(wal_filename);
     if (!db_filename) {
-        report_error("Failed to allocate memory for database filename", 1);
         free(page_data);
         return;
     }
-    strncpy(db_filename, wal_filename, wal_len - 4);
-    db_filename[wal_len - 4] = '\0';
 
     printf("Frame Information:\n");
     while (fread(&frame, sizeof(FrameHeader), 1, file) == 1) {

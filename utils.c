@@ -1,5 +1,7 @@
 #include "utils.h"
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 // Reports an error message, optionally marking it as fatal
 int report_error(const char *message, int fatal) {
@@ -83,4 +85,35 @@ void compute_wal_checksum(uint8_t *data, size_t len, uint32_t *checksum1, uint32
     }
     *checksum1 = s1;
     *checksum2 = s2;
+}
+
+// Derives the database filename from the WAL filename by removing "-wal" suffix
+char* derive_db_filename(const char* wal_filename) {
+    if (!wal_filename) {
+        report_error("WAL filename is NULL", 0);
+        return NULL;
+    }
+
+    size_t wal_len = strlen(wal_filename);
+    const char* suffix = "-wal";
+    size_t suffix_len = strlen(suffix);
+
+    // Check if the filename ends with "-wal"
+    if (wal_len <= suffix_len || strcmp(wal_filename + wal_len - suffix_len, suffix) != 0) {
+        report_error("WAL filename does not end with '-wal'", 0);
+        return NULL;
+    }
+
+    // Allocate memory for the database filename (without "-wal")
+    char* db_filename = malloc(wal_len - suffix_len + 1);
+    if (!db_filename) {
+        report_error("Failed to allocate memory for database filename", 1);
+        return NULL;
+    }
+
+    // Copy the filename without the suffix and null-terminate
+    strncpy(db_filename, wal_filename, wal_len - suffix_len);
+    db_filename[wal_len - suffix_len] = '\0';
+
+    return db_filename;
 }

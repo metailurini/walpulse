@@ -12,5 +12,6 @@ void print_hex_dump(const uint8_t* data, uint32_t size, uint32_t max_bytes);
 int64_t parse_varint(const uint8_t* data, size_t* pos, size_t max_pos, int* bytes_read);
 void compute_wal_checksum(uint8_t* data, size_t len, uint32_t* checksum1, uint32_t* checksum2);
 void capture_hex_dump(const uint8_t* data, uint32_t size, uint32_t max_bytes, char* buffer, size_t buffer_size);
+char* derive_db_filename(const char* wal_filename);
 
 #endif
