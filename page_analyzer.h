@@ -14,7 +14,7 @@ typedef struct {
 } CellInfo;
 
 void print_page_type(uint8_t* page_data, uint32_t page_number);
-void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_size);
+void print_page_header(uint8_t* page_data, uint32_t page_number, uint32_t page_size, const char* db_filename);
 CellInfo parse_cell(uint8_t* page_data, uint32_t offset, uint32_t page_size);
 void print_cell_info(CellInfo* cell, uint8_t* page_data, uint32_t page_size);
 void free_cell_info(CellInfo* cell);

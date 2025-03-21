@@ -26,7 +26,7 @@ typedef struct {
 
 WalHeader read_wal_header(FILE* file);
 int validate_wal_file_size(long file_size, uint32_t page_size);
-void process_wal_frames(FILE* file, WalHeader* header);
+void process_wal_frames(FILE *file, WalHeader *header, const char *wal_filename) ;
 int print_wal_info(const char* filename);
 void verify_frame_checksum(FrameHeader* frame, uint8_t* page_data, uint32_t page_size,
                           uint32_t initial_checksum1, uint32_t initial_checksum2);

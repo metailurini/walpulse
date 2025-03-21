@@ -1,3 +1,4 @@
+#include "db_utils.h"
 #include "page_analyzer.h"
 #include "utils.h"
 #include <stdio.h>
@@ -25,7 +26,7 @@ void print_page_type(uint8_t *page_data, uint32_t page_number) {
 }
 
 // Prints the header information of a database page
-void print_page_header(uint8_t *page_data, uint32_t page_number, uint32_t page_size) {
+void print_page_header(uint8_t *page_data, uint32_t page_number, uint32_t page_size, const char* db_filename) {
     uint8_t page_type = page_data[0];
     uint8_t *header_start = page_data;
     if (page_number == 1) {
@@ -38,6 +39,13 @@ void print_page_header(uint8_t *page_data, uint32_t page_number, uint32_t page_s
     uint8_t fragmented_bytes = header_start[7];
 
     printf("  Page Header:\n");
+    char *table_name = get_table_name_from_page(db_filename, page_number);
+    if (table_name) {
+        printf("    Table Name: %s\n", table_name);
+        free(table_name);
+    } else {
+        printf("    Table Name: (unknown)\n");
+    }
     printf("    First Freeblock Offset: %u (0 if no freeblocks)\n", freeblock_offset);
     printf("    Number of Cells: %u\n", cell_count);
     printf("    Cell Content Start: %u (0 if uninitialized, defaults to %u)\n",
