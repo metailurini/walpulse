@@ -57,7 +57,7 @@ TEST(test_print_page_header) {
         0x03, 0xFF, // Cell content area start
         0x00  // Fragmented bytes
     };
-    print_page_header(page_data, 1, 1024, "test.db");
+    print_page_header(page_data, 1, 1024, "./tests/testdata/test.db");
     // No direct assertions possible due to output-only function; test for no crash
 }
 

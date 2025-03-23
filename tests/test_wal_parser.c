@@ -62,7 +62,7 @@ TEST(test_process_wal_frames) {
     FILE* file = fmemopen(buffer, sizeof(buffer), "rb");
     ASSERT(file != NULL);
     WalHeader header = read_wal_header(file);
-    process_wal_frames(file, &header, "test.wal");
+    process_wal_frames(file, &header, "./tests/testdata/test.db-wal");
     fclose(file);
     // No direct assertions possible due to output-only function; test for no crash
 }

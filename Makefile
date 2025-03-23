@@ -25,7 +25,7 @@ $(TEST_EXEC): $(TEST_OBJ) utils.o wal_parser.o page_analyzer.o db_utils.o
 	@$(CC) $(TEST_OBJ) utils.o wal_parser.o page_analyzer.o db_utils.o -o $(TEST_EXEC) $(LDFLAGS)
 
 run: $(EXEC)
-	@./$(EXEC) test.db
+	@./$(EXEC) tests/testdata/test.db
 	@$(MAKE) clean
 
 clean:
